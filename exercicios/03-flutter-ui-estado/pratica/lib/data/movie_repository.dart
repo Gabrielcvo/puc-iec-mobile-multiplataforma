@@ -60,13 +60,13 @@ class MovieRepository {
       );
 
   // ── TASK 14 — validade do cache (TTL) ───────────────────────────────────────────────
-  CacheStatus _statusOf(CacheEntry? cache) {
+  Future<CacheStatus> cacheStatus() async {
+    final cache = await readCache();
     if (cache == null) return CacheStatus.none;
-    final age = now().difference(cache.savedAt); // now(), NÃO DateTime.now(): o teste controla o relógio
+    // now(), NÃO DateTime.now(): o teste controla o relógio
+    final age = now().difference(cache.savedAt);
     return age < ttl ? CacheStatus.fresh : CacheStatus.stale;
   }
-
-  Future<CacheStatus> cacheStatus() async => _statusOf(await readCache());
 
   // ── TASK 13 + 14 — cache-first (stale-while-revalidate) ──────────────────────────────
   Stream<List<Movie>> watchMovies() async* {
@@ -75,7 +75,7 @@ class MovieRepository {
     if (cache != null) {
       yield cache.movies;
       // TASK 14: cache ainda fresco → não precisa buscar na API
-      if (_statusOf(cache) == CacheStatus.fresh) return;
+      if (await cacheStatus() == CacheStatus.fresh) return;
     }
 
     // 2. revalida na API e grava o dado fresco
