@@ -59,25 +59,33 @@ class MovieRepository {
         }),
       );
 
-  // ── TASK 14 — validade do cache · médio ─────────────────────────────────────────────
-  // Devolva:
-  //   CacheStatus.none  → não há cache;
-  //   CacheStatus.fresh → o cache foi salvo há MENOS que `ttl`;
-  //   CacheStatus.stale → o cache é mais velho que `ttl`.
-  // Use `now()` (NÃO DateTime.now()) — é o que deixa o teste controlar o relógio.
-  Future<CacheStatus> cacheStatus() async {
-    return CacheStatus.none; // 👈 apague e implemente (TASK 14)
+  // ── TASK 14 — validade do cache (TTL) ───────────────────────────────────────────────
+  CacheStatus _statusOf(CacheEntry? cache) {
+    if (cache == null) return CacheStatus.none;
+    final age = now().difference(cache.savedAt); // now(), NÃO DateTime.now(): o teste controla o relógio
+    return age < ttl ? CacheStatus.fresh : CacheStatus.stale;
   }
 
-  // ── TASK 13 — cache-first (stale-while-revalidate) · médio ──────────────────────────
-  // Hoje busca direto na API (e some offline). Faça assim:
-  //   1. leia o cache (readCache) e, se existir, `yield` os filmes dele NA HORA;
-  //   2. tente buscar na API (remote.fetchMovies()); se der certo: writeCache(...) e `yield` os frescos;
-  //   3. se der OfflineException E já emitiu cache → engula o erro (a tela segue com o cache);
-  //      se não havia cache → deixe o erro subir (a tela mostra "sem dados");
-  //
-  // Depois (TASK 14): se cacheStatus() == fresh, NÃO busque na API (já está atualizado).
+  Future<CacheStatus> cacheStatus() async => _statusOf(await readCache());
+
+  // ── TASK 13 + 14 — cache-first (stale-while-revalidate) ──────────────────────────────
   Stream<List<Movie>> watchMovies() async* {
-    yield await remote.fetchMovies(); // 👈 substitua pelo fluxo acima
+    // 1. cache primeiro, na hora
+    final cache = await readCache();
+    if (cache != null) {
+      yield cache.movies;
+      // TASK 14: cache ainda fresco → não precisa buscar na API
+      if (_statusOf(cache) == CacheStatus.fresh) return;
+    }
+
+    // 2. revalida na API e grava o dado fresco
+    try {
+      final fresh = await remote.fetchMovies();
+      await writeCache(fresh);
+      yield fresh;
+    } on OfflineException {
+      // 3. offline COM cache → a tela segue com o cache; SEM cache → o erro sobe ("sem dados")
+      if (cache == null) rethrow;
+    }
   }
 }

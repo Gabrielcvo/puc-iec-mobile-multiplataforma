@@ -1,7 +1,6 @@
 // lib/models/movie.dart — modelo de domínio.
 //
-// TASK 12 (🧑‍💻 EM CASA · fácil): implemente toJson() e Movie.fromJson().
-// O cache offline guarda cada filme como JSON — sem isso nada é salvo.
+// TASK 12: toJson() e Movie.fromJson() — o cache offline guarda cada filme como JSON.
 
 class Movie {
   final int id;
@@ -16,12 +15,19 @@ class Movie {
     required this.year,
   });
 
-  // ── TASK 12 — serialização · fácil ───────────────────────────────────────────────
-  // toJson: devolva {'id': ..., 'title': ..., 'rating': ..., 'year': ...}
-  // fromJson: faça o caminho de volta. Dica: `(json['rating'] as num).toDouble()`
-  // (o JSON pode trazer 8 em vez de 8.0).
-  Map<String, dynamic> toJson() => throw UnimplementedError('TASK 12: implemente toJson()');
+  // ── TASK 12 — serialização ───────────────────────────────────────────────────────
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'title': title,
+        'rating': rating,
+        'year': year,
+      };
 
-  factory Movie.fromJson(Map<String, dynamic> json) =>
-      throw UnimplementedError('TASK 12: implemente Movie.fromJson()');
+  // `as num` + toDouble/toInt: o JSON pode trazer 8 em vez de 8.0.
+  factory Movie.fromJson(Map<String, dynamic> json) => Movie(
+        id: (json['id'] as num).toInt(),
+        title: json['title'] as String,
+        rating: (json['rating'] as num).toDouble(),
+        year: json['year'] as String,
+      );
 }
